@@ -36,21 +36,40 @@ namespace OutlookHelperServer
         {
             try
             {
+                // --- CORS ---
+                context.Response.AddHeader("Access-Control-Allow-Origin", "*");
+                context.Response.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                context.Response.AddHeader("Access-Control-Allow-Headers", "Content-Type");
+
+                if (context.Request.HttpMethod == "OPTIONS")
+                {
+                    context.Response.StatusCode = 200;
+                    context.Response.OutputStream.Close();
+                    return;
+                }
+
+                // --- Health endpoint ---
                 if (context.Request.HttpMethod == "GET" && context.Request.Url.AbsolutePath == "/health")
                 {
                     byte[] buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
                     context.Response.ContentType = "application/json";
                     context.Response.OutputStream.Write(buffer, 0, buffer.Length);
                 }
+                // --- Send endpoint ---
                 else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/send")
                 {
                     using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                     string body = reader.ReadToEnd();
-                    var payload = JsonSerializer.Deserialize<MailRequest[]>(body);
 
+                    var payload = JsonSerializer.Deserialize<MailRequest[]>(body);
                     if (payload != null)
                     {
+                        Console.WriteLine($"⚡ Requête reçue : {payload.Length} emails");
                         GenerateMails(payload);
+                    }
+                    else
+                    {
+                        Console.WriteLine("⚠️ Payload JSON invalide");
                     }
 
                     byte[] buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
@@ -94,11 +113,13 @@ namespace OutlookHelperServer
                 string subject = "Colis : " + colisList;
                 string body = $"Bonjour {req.Name},\n\nVos colis suivants sont en attente : {colisList}\n\nMerci de confirmer vos informations.\n\nCordialement.";
 
+                Console.WriteLine($"📧 Création mail pour {req.Email} avec {req.Parcels.Length} colis");
+
                 Outlook.MailItem mail = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
                 mail.To = req.Email;
                 mail.Subject = subject;
                 mail.Body = body;
-                mail.Display(); // ou .Send() pour envoyer directement
+                mail.Display(); // Utiliser .Send() pour envoi automatique
             }
         }
     }
