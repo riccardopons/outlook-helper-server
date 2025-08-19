@@ -8,10 +8,11 @@ using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace OutlookHelperServer
 {
-    class MailRequest
+    public class MailRequest
     {
-        public string Email { get; set; }
-        public string[] Parcels { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string[] Parcels { get; set; } = Array.Empty<string>();
     }
 
     internal static class Program
@@ -19,11 +20,10 @@ namespace OutlookHelperServer
         [STAThread]
         static void Main()
         {
-            // Lancement du serveur HTTP local
             HttpListener listener = new HttpListener();
-            listener.Prefixes.Add("http://localhost:5001/");
+            listener.Prefixes.Add("http://localhost:5000/");
             listener.Start();
-            Console.WriteLine("✅ OutlookHelperServer démarré sur http://localhost:5001/");
+            Console.WriteLine("✅ OutlookHelperServer démarré sur http://localhost:5000/");
 
             while (true)
             {
@@ -36,16 +36,21 @@ namespace OutlookHelperServer
         {
             try
             {
-                if (context.Request.HttpMethod == "POST" &&
-                    context.Request.Url.AbsolutePath == "/send-mails")
+                if (context.Request.HttpMethod == "GET" && context.Request.Url.AbsolutePath == "/health")
+                {
+                    byte[] buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                }
+                else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/send")
                 {
                     using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                     string body = reader.ReadToEnd();
-                    var mails = JsonSerializer.Deserialize<MailRequest[]>(body);
+                    var payload = JsonSerializer.Deserialize<MailRequest[]>(body);
 
-                    if (mails != null)
+                    if (payload != null)
                     {
-                        GenerateMails(mails);
+                        GenerateMails(payload);
                     }
 
                     byte[] buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
@@ -87,12 +92,13 @@ namespace OutlookHelperServer
 
                 string colisList = string.Join(", ", req.Parcels);
                 string subject = "Colis : " + colisList;
+                string body = $"Bonjour {req.Name},\n\nVos colis suivants sont en attente : {colisList}\n\nMerci de confirmer vos informations.\n\nCordialement.";
 
                 Outlook.MailItem mail = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
                 mail.To = req.Email;
                 mail.Subject = subject;
-                mail.Body = $"Bonjour,\n\nVos colis suivants sont en attente : {colisList}\n\nMerci de confirmer vos informations.\n\nCordialement.";
-                mail.Display(); // → .Send() pour envoyer directement
+                mail.Body = body;
+                mail.Display(); // ou .Send() pour envoyer directement
             }
         }
     }
