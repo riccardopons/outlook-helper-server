@@ -61,9 +61,11 @@ namespace OutlookHelperServer
                 // --- Send endpoint ---
                 if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/send")
                 {
+                    Console.WriteLine($"📨 Requête reçue: {context.Request.HttpMethod} {context.Request.Url.AbsolutePath}");
+
                     using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                     string body = reader.ReadToEnd();
-                    Console.WriteLine("📨 Corps reçu : " + body);
+                    Console.WriteLine("Corps reçu : " + body);
 
                     var payload = JsonSerializer.Deserialize<MailRequest[]>(body);
                     if (payload == null)
@@ -158,7 +160,7 @@ Tout e-mail reçu après 17h00 sera pris en charge le lendemain matin. (Hors sam
                         mail.To = req.Email;
                         mail.Subject = subject;
                         mail.Body = body;
-                        mail.Display(); // utiliser .Send() pour envoyer automatiquement
+                        mail.Display(); // .Send() si tu veux envoyer directement
                     }
                     catch (Exception ex)
                     {
