@@ -22,7 +22,7 @@ jobs:
         run: dotnet restore
 
       - name: Publish self-contained exe
-        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
+        run: dotnet publish OutlookHelperServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
 
       - name: List published files
         run: dir out
@@ -31,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OutlookHelperServer
-          path: out/MonServeur.exe  # <-- Remplace par le nom réel du projet
+          path: out/OutlookHelperServer.exe
