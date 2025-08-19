@@ -1,29 +1,31 @@
-name: Build Server
+name: Build OutlookHelperServer
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: '9.0.x'
 
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build
+      - name: Publish self-contained exe
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
 
-      - name: Upload artifact
+      - name: Upload exe artifact
         uses: actions/upload-artifact@v4
         with:
-          name: outlook-helper-server
-          path: out/*
+          name: OutlookHelperServer
+          path: out/OutlookHelperServer.exe
