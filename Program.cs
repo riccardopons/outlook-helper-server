@@ -54,55 +54,65 @@ namespace OutlookHelperServer
                     byte[] buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
                     context.Response.ContentType = "application/json";
                     context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                    context.Response.OutputStream.Close();
+                    return;
                 }
+
                 // --- Send endpoint ---
-                else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/send")
+                if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/send")
                 {
                     using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                     string body = reader.ReadToEnd();
+                    Console.WriteLine("📨 Corps reçu : " + body);
 
                     var payload = JsonSerializer.Deserialize<MailRequest[]>(body);
-                    if (payload != null)
+                    if (payload == null)
                     {
-                        Console.WriteLine($"⚡ Requête reçue : {payload.Length} emails");
-                        GenerateMails(payload);
+                        Console.WriteLine("⚠️ Payload JSON invalide");
+                        context.Response.StatusCode = 400;
                     }
                     else
                     {
-                        Console.WriteLine("⚠️ Payload JSON invalide");
+                        Console.WriteLine($"⚡ {payload.Length} emails reçus");
+                        GenerateMails(payload);
+                        context.Response.StatusCode = 200;
                     }
 
-                    byte[] buffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
+                    byte[] respBuffer = Encoding.UTF8.GetBytes("{\"status\":\"ok\"}");
                     context.Response.ContentType = "application/json";
-                    context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                    context.Response.OutputStream.Write(respBuffer, 0, respBuffer.Length);
+                    context.Response.OutputStream.Close();
+                    return;
                 }
-                else
-                {
-                    context.Response.StatusCode = 404;
-                }
+
+                context.Response.StatusCode = 404;
+                context.Response.OutputStream.Close();
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ Erreur : " + ex.Message);
-                context.Response.StatusCode = 500;
-            }
-            finally
-            {
-                context.Response.OutputStream.Close();
+                Console.WriteLine("❌ Erreur HandleRequest : " + ex);
+                try
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.OutputStream.Close();
+                }
+                catch { }
             }
         }
 
         static void GenerateMails(MailRequest[] mails)
         {
-            Outlook.Application outlookApp;
+            Outlook.Application outlookApp = null;
+            bool outlookDisponible = true;
+
             try
             {
                 outlookApp = new Outlook.Application();
             }
             catch
             {
-                Console.WriteLine("⚠️ Outlook non disponible");
-                return;
+                outlookDisponible = false;
+                Console.WriteLine("⚠️ Outlook non disponible, les emails seront affichés dans la console uniquement.");
             }
 
             foreach (var req in mails)
@@ -110,16 +120,51 @@ namespace OutlookHelperServer
                 if (string.IsNullOrWhiteSpace(req.Email)) continue;
 
                 string colisList = string.Join(", ", req.Parcels);
-                string subject = "Colis : " + colisList;
-                string body = $"Bonjour {req.Name},\n\nVos colis suivants sont en attente : {colisList}\n\nMerci de confirmer vos informations.\n\nCordialement.";
+                string subject = $"Colis : {colisList}";
+                string phraseColis = req.Parcels.Length == 1 ?
+                    "Votre colis suivant est actuellement en attente de livraison dans notre agence :" :
+                    "Vos colis suivants sont actuellement en attente de livraison dans notre agence :";
+                string phraseAction = req.Parcels.Length == 1 ? "le remettre en livraison" : "les remettre en livraison";
 
-                Console.WriteLine($"📧 Création mail pour {req.Email} avec {req.Parcels.Length} colis");
+                string body = $@"
+Bonjour {req.Name},
 
-                Outlook.MailItem mail = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
-                mail.To = req.Email;
-                mail.Subject = subject;
-                mail.Body = body;
-                mail.Display(); // Utiliser .Send() pour envoi automatique
+{phraseColis}
+{colisList}
+
+Afin que nous puissions {phraseAction}, pourriez-vous nous transmettre un numéro de téléphone valide, ainsi que le jour de la livraison souhaité (du lundi au vendredi).
+
+Merci de contacter le 09 74 910 910 (numéro gratuit).
+
+(Nous ne pouvons pas vous donner un horaire fixe de livraison, cela dépend de la tournée de notre chauffeur)
+
+Merci de votre retour.
+
+Tout e-mail reçu après 17h00 sera pris en charge le lendemain matin. (Hors samedi et dimanche)
+";
+
+                // Affiche dans la console
+                Console.WriteLine("======================================");
+                Console.WriteLine($"📧 Destinataire : {req.Email}");
+                Console.WriteLine($"Objet : {subject}");
+                Console.WriteLine($"Corps :\n{body}");
+                Console.WriteLine("======================================");
+
+                if (outlookDisponible)
+                {
+                    try
+                    {
+                        Outlook.MailItem mail = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
+                        mail.To = req.Email;
+                        mail.Subject = subject;
+                        mail.Body = body;
+                        mail.Display(); // utiliser .Send() pour envoyer automatiquement
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("❌ Erreur création mail Outlook : " + ex);
+                    }
+                }
             }
         }
     }
