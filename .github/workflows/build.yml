@@ -31,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OutlookHelperServer
-          path: out/OutlookHelperServer.exe
+          path: out/OutlookHelper.exe
