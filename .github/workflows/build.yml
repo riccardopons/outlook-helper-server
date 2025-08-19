@@ -26,6 +26,5 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OutlookHelper-EXE
-        path: |
-          **/bin/Release/net9.0-windows/win-x64/publish/*
+        name: outlook-helper-server
+	path: out/*
