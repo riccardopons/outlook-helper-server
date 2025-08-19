@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType> <!-- pas de console noire -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- ASP.NET Core pour Kestrel (serveur HTTP sans droits admin) -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Interop Outlook (COM) -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Office.Interop.Outlook" Version="15.0.4797.1003" />
+  </ItemGroup>
+
+</Project>
