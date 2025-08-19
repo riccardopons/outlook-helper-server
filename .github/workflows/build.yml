@@ -24,8 +24,11 @@ jobs:
       - name: Publish self-contained exe
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out
 
+      - name: List published files
+        run: dir out
+
       - name: Upload exe artifact
         uses: actions/upload-artifact@v4
         with:
           name: OutlookHelperServer
-          path: out/OutlookHelperServer.exe
+          path: out/MonServeur.exe  # <-- Remplace par le nom réel du projet
